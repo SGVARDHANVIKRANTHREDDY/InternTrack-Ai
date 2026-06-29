@@ -1,3 +1,4 @@
+// Gemini API Client Wrapper Utility
 import { GoogleGenAI } from '@google/genai';
 import { logger } from './logger.js';
 
