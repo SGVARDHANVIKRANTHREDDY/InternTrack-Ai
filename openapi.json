@@ -1,0 +1,445 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "InternTrack AI API Documentation",
+    "description": "API Reference for the full-stack internship and job application intelligence platform. All endpoints (except registration/login) require a JWT token passed in the Authorization header.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/api",
+      "description": "Relative API server URL"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Check API status and version metadata",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "API is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "ok" },
+                    "timestamp": { "type": "string", "format": "date-time" },
+                    "version": { "type": "string", "example": "1.0.0" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "summary": "Register a new user account",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password", "name"],
+                "properties": {
+                  "email": { "type": "string", "format": "email", "example": "student@example.com" },
+                  "password": { "type": "string", "minLength": 6, "example": "securepass123" },
+                  "name": { "type": "string", "example": "Jane Doe" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User registered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": { "type": "string", "example": "eyJhbGciOiJIUzI1NiIsIn..." },
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string", "format": "uuid" },
+                        "email": { "type": "string" },
+                        "name": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "User already exists or validation failed" }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Log in and receive JWT token",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email", "example": "student@example.com" },
+                  "password": { "type": "string", "example": "securepass123" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": { "type": "string" },
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string", "format": "uuid" },
+                        "email": { "type": "string" },
+                        "name": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "summary": "Get current user profile data",
+        "responses": {
+          "200": {
+            "description": "User profile returned successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string" },
+                    "email": { "type": "string" },
+                    "name": { "type": "string" },
+                    "college": { "type": "string", "nullable": true },
+                    "graduationYear": { "type": "integer", "nullable": true },
+                    "linkedin": { "type": "string", "nullable": true },
+                    "github": { "type": "string", "nullable": true },
+                    "resumeLink": { "type": "string", "nullable": true }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update user profile fields",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "college": { "type": "string", "nullable": true },
+                  "graduationYear": { "type": "integer", "nullable": true },
+                  "linkedin": { "type": "string", "nullable": true },
+                  "github": { "type": "string", "nullable": true },
+                  "resumeLink": { "type": "string", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Profile updated successfully" }
+        }
+      }
+    },
+    "/companies": {
+      "get": {
+        "summary": "List all companies for current user",
+        "responses": {
+          "200": { "description": "List of companies" }
+        }
+      },
+      "post": {
+        "summary": "Create a company profile",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["companyName"],
+                "properties": {
+                  "companyName": { "type": "string", "example": "Google" },
+                  "companyLogo": { "type": "string", "nullable": true },
+                  "companyWebsite": { "type": "string", "nullable": true },
+                  "industry": { "type": "string", "nullable": true },
+                  "location": { "type": "string", "nullable": true },
+                  "notes": { "type": "string", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Company created successfully" }
+        }
+      }
+    },
+    "/companies/{id}": {
+      "put": {
+        "summary": "Update a company profile",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "companyName": { "type": "string" },
+                  "companyWebsite": { "type": "string", "nullable": true },
+                  "industry": { "type": "string", "nullable": true },
+                  "location": { "type": "string", "nullable": true },
+                  "notes": { "type": "string", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Company updated successfully" }
+        }
+      },
+      "delete": {
+        "summary": "Delete a company",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Company deleted" }
+        }
+      }
+    },
+    "/applications": {
+      "get": {
+        "summary": "List all applications with company data",
+        "responses": {
+          "200": { "description": "List of applications" }
+        }
+      },
+      "post": {
+        "summary": "Create job application entry",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["companyId", "role"],
+                "properties": {
+                  "companyId": { "type": "string" },
+                  "role": { "type": "string", "example": "Software Engineer Intern" },
+                  "status": { "type": "string", "default": "Wishlist" },
+                  "priority": { "type": "string", "default": "Medium" },
+                  "notes": { "type": "string", "nullable": true },
+                  "salaryRange": { "type": "string", "nullable": true },
+                  "source": { "type": "string", "default": "OTHER" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Application created successfully" }
+        }
+      }
+    },
+    "/applications/{id}": {
+      "put": {
+        "summary": "Update an application entry",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": { "type": "string" },
+                  "priority": { "type": "string" },
+                  "notes": { "type": "string" },
+                  "followUpSent": { "type": "boolean" },
+                  "recruiterReplied": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Application updated" }
+        }
+      },
+      "delete": {
+        "summary": "Delete application entry",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Application deleted" }
+        }
+      }
+    },
+    "/applications/{appId}/notes": {
+      "get": {
+        "summary": "List interview notes for application",
+        "parameters": [
+          { "name": "appId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "List of interview notes" }
+        }
+      },
+      "post": {
+        "summary": "Add interview round note",
+        "parameters": [
+          { "name": "appId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "round": { "type": "string" },
+                  "notes": { "type": "string" },
+                  "feedback": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Note created" }
+        }
+      }
+    },
+    "/applications/{appId}/interview-prep": {
+      "post": {
+        "summary": "Generate AI interview prep material using Gemini",
+        "parameters": [
+          { "name": "appId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "AI preparation pack details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string" },
+                    "dsaTopics": { "type": "string" },
+                    "technicalQuestions": { "type": "string" },
+                    "hrQuestions": { "type": "string" },
+                    "resumeQuestions": { "type": "string" },
+                    "companyResearch": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/resumes": {
+      "get": {
+        "summary": "List all uploaded resume versions",
+        "responses": {
+          "200": { "description": "List of resumes" }
+        }
+      },
+      "post": {
+        "summary": "Upload and parse new resume version",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["resumeName"],
+                "properties": {
+                  "resumeName": { "type": "string", "example": "Software_Engineer_CV.pdf" },
+                  "targetRole": { "type": "string", "nullable": true },
+                  "fileContent": { "type": "string", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Resume created" }
+        }
+      }
+    },
+    "/notifications": {
+      "get": {
+        "summary": "List all notifications (auto-generates missing resume, deadlines, follow-ups)",
+        "responses": {
+          "200": { "description": "List of notifications" }
+        }
+      }
+    },
+    "/analytics": {
+      "get": {
+        "summary": "Retrieve complete application pipeline analytical payload",
+        "responses": {
+          "200": { "description": "Metrics including status break-down, source performance, and area trends" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}
