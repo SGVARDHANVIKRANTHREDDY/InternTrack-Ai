@@ -31,6 +31,7 @@ const PIPELINE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 const SOURCE_COLORS = ['#d97706', '#b45309', '#f59e0b', '#fbbf24', '#fef3c7', '#78350f'];
 
 export default function Dashboard() {
+  // Main layout rendering containing funnel and performance charts
   const queryClient = useQueryClient();
 
   const { data: analytics, isLoading: analyticsLoading } = useQuery<any>({
