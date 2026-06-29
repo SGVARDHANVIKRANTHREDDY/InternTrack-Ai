@@ -1,0 +1,38 @@
+name: InternTrack AI CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    name: Build & Verify
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/workflows/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npm run db:generate
+
+      - name: Check TypeScript Compilation
+        run: npm run lint
+
+      - name: Build Application
+        run: npm run build
+        env:
+          # Ensure production builds don't fail on missing env variables at compile time
+          JWT_SECRET: "ci_cd_temporary_secret_key_for_building_purposes_only"
+          DATABASE_URL: "postgresql://postgres:password@localhost:5432/interntrack?schema=public"
