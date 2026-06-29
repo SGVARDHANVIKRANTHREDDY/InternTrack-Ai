@@ -1,0 +1,234 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String        @id @default(uuid())
+  email          String        @unique
+  passwordHash   String
+  name           String
+  college        String?
+  graduationYear Int?
+  linkedin       String?
+  github         String?
+  resumeLink     String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  companies      Company[]
+  applications   Application[]
+  resumes        ResumeVersion[]
+  activityLogs   ActivityLog[]
+  notifications  Notification[]
+  aiInsights     AiInsight[]
+}
+
+model Company {
+  id             String        @id @default(uuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName    String
+  companyLogo    String?
+  companyWebsite String?
+  industry       String?
+  location       String?
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  applications   Application[]
+
+  @@index([userId])
+}
+
+model Application {
+  id             String        @id @default(uuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId      String
+  company        Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  role           String
+  applicationDate DateTime?
+  deadlineDate   DateTime?
+  status         String        @default("Wishlist")
+  salaryRange    String?
+  applicationLink String?
+  recruiterName  String?
+  recruiterEmail String?
+  priority       String        @default("Medium")
+  notes          String?
+  
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  interviewNotes InterviewNote[]
+  resumeVersionId String?
+  resumeVersion   ResumeVersion? @relation(fields: [resumeVersionId], references: [id], onDelete: SetNull)
+
+  // New Phase 2 Fields
+  source          String        @default("OTHER") // LINKEDIN, INTERNSHALA, WELLFOUND, COMPANY_CAREERS, REFERRAL, OTHER
+  
+  followUpSent      Boolean   @default(false)
+  followUpDate      DateTime?
+  recruiterReplied  Boolean   @default(false)
+  nextFollowUpDate  DateTime?
+  followUpNotes     String?
+  followUpStatus    String    @default("WAITING") // WAITING, FOLLOWED_UP, REPLIED
+
+  interviewPreps     InterviewPreparation[]
+  resumeTailorings   ResumeTailoringAnalysis[]
+
+  @@index([userId])
+}
+
+model InterviewNote {
+  id             String        @id @default(uuid())
+  applicationId  String
+  application    Application   @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  
+  title          String
+  round          String?
+  date           DateTime?
+  notes          String?
+  feedback       String?
+  outcome        String?
+  
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model ResumeVersion {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  resumeName      String
+  versionNumber   Int
+  notes           String?
+  fileUrl         String?       // Or store dataUrl/base64/text
+  fileContent     String?       // The extracted text or pasted content
+  mimeType        String?       // e.g., application/pdf, text/plain, etc.
+  fileSize        Int?          // in bytes
+  targetRole      String?       // Target Role, e.g., Software Engineer
+  atsScore        Int?          // ATS Score (0-100)
+  aiSummary       String?       // AI summary of the resume
+  strengths       String?       // JSON string list of strengths
+  weaknesses      String?       // JSON string list of weaknesses
+  missingKeywords String?       // JSON string list of missing keywords
+  recommendedSkills String?     // JSON string list of recommended skills
+  formattingIssues String?      // JSON string list of formatting issues
+  suggestions     String?       // JSON string list of suggestions
+  status          String        @default("Active") // "Active", "Archived", etc.
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  applications    Application[]
+  analyses        AiAnalysisHistory[]
+
+  @@index([userId])
+}
+
+model AiAnalysisHistory {
+  id              String        @id @default(uuid())
+  resumeVersionId String
+  resumeVersion   ResumeVersion @relation(fields: [resumeVersionId], references: [id], onDelete: Cascade)
+  
+  targetRole      String
+  atsScore        Int
+  strengths       String        // JSON string list
+  weaknesses      String        // JSON string list
+  missingKeywords String        // JSON string list
+  recommendedSkills String      // JSON string list
+  formattingIssues String       // JSON string list
+  suggestions     String        // JSON string list
+  aiSummary       String?
+  
+  createdAt       DateTime      @default(now())
+}
+
+model ActivityLog {
+  id             String        @id @default(uuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  action         String
+  details        String?
+  
+  // New Phase 2 Fields
+  entityType     String?
+  entityId       String?
+  metadata       String?       // JSON string
+  
+  createdAt      DateTime      @default(now())
+
+  @@index([userId])
+}
+
+model Notification {
+  id             String        @id @default(uuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  message        String
+  read           Boolean       @default(false)
+  type           String?
+  link           String?
+  
+  // New Phase 2 Fields
+  title          String?       @default("Notification")
+  
+  createdAt      DateTime      @default(now())
+
+  @@index([userId])
+}
+
+model InterviewPreparation {
+  id                 String      @id @default(uuid())
+  applicationId      String
+  application        Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  
+  dsaTopics          String      // JSON string
+  technicalQuestions String      // JSON string
+  hrQuestions        String      // JSON string
+  resumeQuestions    String      // JSON string
+  companyResearch    String      // JSON string
+  
+  createdAt          DateTime    @default(now())
+}
+
+model ResumeTailoringAnalysis {
+  id             String      @id @default(uuid())
+  applicationId  String
+  application    Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  
+  atsScore         Int
+  missingKeywords  String      // JSON array
+  recommendedSkills String     // JSON array
+  suggestions      String      // Text / JSON string
+  
+  createdAt      DateTime    @default(now())
+}
+
+model AiInsight {
+  id                      String      @id @default(uuid())
+  userId                  String
+  user                    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  mostSuccessfulIndustry  String?
+  mostSuccessfulSource    String?
+  mostCommonRejectionStage String?
+  highestConversionFunnel String?
+  weakestFunnelStage      String?
+  recommendations         String      // JSON array / text
+  
+  createdAt               DateTime    @default(now())
+
+  @@index([userId])
+}
