@@ -82,9 +82,9 @@ router.post('/register', validate(RegisterSchema), async (req: any, res) => {
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
     logger.info(`User registered successfully: ${user.email}`, { requestId: req.id, userId: user.id });
     res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
-  } catch (err) {
+  } catch (err: any) {
     logger.error('Registration error', { requestId: req.id, error: err });
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: `Server error: ${err.message || err}` });
   }
 });
 
@@ -106,9 +106,9 @@ router.post('/login', validate(LoginSchema), async (req: any, res) => {
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
     logger.info(`User logged in: ${user.email}`, { requestId: req.id, userId: user.id });
     res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
-  } catch (err) {
+  } catch (err: any) {
     logger.error('Login error', { requestId: req.id, error: err });
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: `Server error: ${err.message || err}` });
   }
 });
 
@@ -119,9 +119,9 @@ router.get('/me', authenticate, async (req: any, res) => {
       select: { id: true, email: true, name: true, college: true, graduationYear: true, linkedin: true, github: true, resumeLink: true }
     });
     res.json(user);
-  } catch (err) {
+  } catch (err: any) {
     logger.error('Error fetching user profile', { requestId: req.id, userId: req.userId, error: err });
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: `Server error: ${err.message || err}` });
   }
 });
 
@@ -135,9 +135,9 @@ router.put('/me', authenticate, validate(UpdateProfileSchema), async (req: any, 
     });
     logger.info('User profile updated', { requestId: req.id, userId: req.userId });
     res.json(updated);
-  } catch (err) {
+  } catch (err: any) {
     logger.error('Error updating user profile', { requestId: req.id, userId: req.userId, error: err });
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: `Server error: ${err.message || err}` });
   }
 });
 
