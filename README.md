@@ -15,6 +15,7 @@ InternTrack AI is a production-grade web application that replaces scattered spr
 - [API Reference](#api-reference)
 - [AI Integration](#ai-integration)
 - [Security](#security)
+- [Testing](#testing)
 - [Getting Started](#getting-started)
 - [Project Structure](#project-structure)
 - [Known Limitations & Roadmap](#known-limitations--roadmap)
@@ -77,9 +78,9 @@ Maintain a company directory with logo, website, industry, location, and notes. 
 | Backend Runtime | Node.js + Express 4 |
 | ORM | Prisma 5 |
 | Database | PostgreSQL (Neon / Supabase / Railway / local Docker) |
-| Authentication | JWT (jsonwebtoken) + bcryptjs |
+| Authentication | JWT (jsonwebtoken), delivered as an httpOnly secure cookie, + bcryptjs password hashing |
 | AI Provider | Google Gemini (via @google/genai SDK) |
-| Security | Helmet (CSP enabled), express-rate-limit, CORS |
+| Security | Helmet (CSP enabled), express-rate-limit (global + stricter auth-route limiter), CORS |
 | Error Monitoring | Sentry (Node backend + React frontend) |
 | Logging | Structured logger with ISO-8601 timestamps + Request ID |
 | API Docs | OpenAPI 3.0 + Swagger UI (`/api/docs`) |
@@ -105,21 +106,22 @@ Browser
   │               ├── Request ID Middleware  (generates UUID, sets X-Request-ID header)
   │               ├── Sentry Tag Middleware  (tags request_id on every Sentry event)
   │               ├── CSP / Helmet
-  │               ├── Rate Limiter (100 req / 15 min / IP)
+  │               ├── Rate Limiter (global + auth-specific)
   │               └── API Router (src/backend/api.ts)
+  │                     ├── /health          (inline in api.ts)
+  │                     ├── /docs, /docs/spec (Swagger UI, served from openapi.json)
   │                     ├── routes/auth.ts
   │                     ├── routes/companies.ts
   │                     ├── routes/applications.ts
   │                     ├── routes/resumes.ts
   │                     ├── routes/notifications.ts
   │                     ├── routes/analytics.ts
-  │                     ├── routes/activity.ts
-  │                     └── routes/health.ts
+  │                     └── routes/activity.ts
   │
   └── /*      ──► Vercel Static CDN (dist/index.html + assets)
 ```
 
-The frontend uses a single `apiRequest` utility that attaches the Bearer token from localStorage to every request. `AuthContext` holds the authenticated user and exposes `login` / `logout`. All server data is managed through React Query with per-resource query keys, ensuring cache invalidation is scoped and predictable.
+The frontend's `apiRequest` utility sends every request with `credentials: 'include'` so the browser attaches the httpOnly session cookie automatically — the token is never touched by client-side JavaScript. `AuthContext` holds the authenticated user and exposes `login` / `logout`. All server data is managed through React Query with per-resource query keys, ensuring cache invalidation is scoped and predictable.
 
 Every response carries an `X-Request-ID` header (UUID). This ID is logged by the structured logger and tagged on Sentry events, making it trivial to trace any request across logs and error reports.
 
@@ -157,7 +159,7 @@ All relationships use `onDelete: Cascade` where appropriate so deleting a user o
 
 ## API Reference
 
-All routes under `/api` are rate-limited to 100 requests per 15 minutes per IP. All routes except `/auth/register`, `/auth/login`, `/health`, and `/docs` require an `Authorization: Bearer <token>` header.
+All routes under `/api` are rate-limited (100 requests / 15 min / IP globally, with a tighter limit on `/auth/login` and `/auth/register` to blunt credential-stuffing attempts). All routes except `/auth/register`, `/auth/login`, `/health`, and `/docs` require a valid session (httpOnly auth cookie).
 
 > **Interactive docs**: Start the dev server and visit `http://localhost:3000/api/docs` for a live Swagger UI where you can try every endpoint directly in the browser.
 
@@ -169,67 +171,67 @@ All routes under `/api` are rate-limited to 100 requests per 15 minutes per IP. 
 ### Auth
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| POST | `/api/auth/register` | None | Create account |
-| POST | `/api/auth/login` | None | Sign in, receive JWT |
-| GET | `/api/auth/me` | JWT | Get current user profile |
-| PUT | `/api/auth/me` | JWT | Update profile fields |
+| POST | `/api/auth/register` | None | Create account, sets session cookie |
+| POST | `/api/auth/login` | None | Sign in, sets session cookie |
+| GET | `/api/auth/me` | Cookie | Get current user profile |
+| PUT | `/api/auth/me` | Cookie | Update profile fields |
 
 ### Companies
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/api/companies` | JWT | List all companies |
-| POST | `/api/companies` | JWT | Create company |
-| PUT | `/api/companies/:id` | JWT | Update company |
-| DELETE | `/api/companies/:id` | JWT | Delete company |
+| GET | `/api/companies` | Cookie | List all companies |
+| POST | `/api/companies` | Cookie | Create company |
+| PUT | `/api/companies/:id` | Cookie | Update company |
+| DELETE | `/api/companies/:id` | Cookie | Delete company |
 
 ### Applications
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/api/applications` | JWT | List all applications (includes company) |
-| POST | `/api/applications` | JWT | Create application |
-| PUT | `/api/applications/:id` | JWT | Update application (status, follow-up, resume, etc.) |
-| DELETE | `/api/applications/:id` | JWT | Delete application |
-| GET | `/api/applications/:appId/notes` | JWT | List interview notes |
-| POST | `/api/applications/:appId/notes` | JWT | Add interview note |
-| DELETE | `/api/notes/:id` | JWT | Delete interview note |
+| GET | `/api/applications` | Cookie | List all applications (includes company) |
+| POST | `/api/applications` | Cookie | Create application |
+| PUT | `/api/applications/:id` | Cookie | Update application (status, follow-up, resume, etc.) |
+| DELETE | `/api/applications/:id` | Cookie | Delete application |
+| GET | `/api/applications/:appId/notes` | Cookie | List interview notes |
+| POST | `/api/applications/:appId/notes` | Cookie | Add interview note |
+| DELETE | `/api/notes/:id` | Cookie | Delete interview note |
 
 ### AI Features
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| POST | `/api/applications/:appId/interview-prep` | JWT | Generate interview prep pack |
-| GET | `/api/applications/:appId/interview-prep` | JWT | Fetch saved prep packs |
-| PUT | `/api/interview-prep/:id` | JWT | Save manual edits to prep pack |
-| POST | `/api/applications/:appId/tailor-resume` | JWT | Run resume tailoring analysis |
-| GET | `/api/applications/:appId/tailor-resume` | JWT | Fetch latest tailoring result |
-| POST | `/api/analytics/ai-insights` | JWT | Generate career pipeline insights |
-| GET | `/api/analytics/ai-insights` | JWT | Fetch latest insights |
+| POST | `/api/applications/:appId/interview-prep` | Cookie | Generate interview prep pack |
+| GET | `/api/applications/:appId/interview-prep` | Cookie | Fetch saved prep packs |
+| PUT | `/api/interview-prep/:id` | Cookie | Save manual edits to prep pack |
+| POST | `/api/applications/:appId/tailor-resume` | Cookie | Run resume tailoring analysis |
+| GET | `/api/applications/:appId/tailor-resume` | Cookie | Fetch latest tailoring result |
+| POST | `/api/analytics/ai-insights` | Cookie | Generate career pipeline insights |
+| GET | `/api/analytics/ai-insights` | Cookie | Fetch latest insights |
 
 ### Resumes
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/api/resumes` | JWT | List all resume versions |
-| POST | `/api/resumes` | JWT | Upload new resume version |
-| DELETE | `/api/resumes/:id` | JWT | Delete resume |
-| PATCH | `/api/resumes/:id/rename` | JWT | Rename resume |
-| POST | `/api/resumes/:id/duplicate` | JWT | Clone resume version |
-| POST | `/api/resumes/:id/analyze` | JWT | Run AI analysis (saves result) |
-| GET | `/api/resumes/:id/analyses` | JWT | Fetch analysis history |
-| GET | `/api/resumes/stats` | JWT | Aggregate stats across all resumes |
-| GET | `/api/resumes/compare?id1=&id2=` | JWT | Side-by-side comparison |
-| POST | `/api/resumes/analyze` | JWT | One-off analysis (no persistence) |
+| GET | `/api/resumes` | Cookie | List all resume versions |
+| POST | `/api/resumes` | Cookie | Upload new resume version |
+| DELETE | `/api/resumes/:id` | Cookie | Delete resume |
+| PATCH | `/api/resumes/:id/rename` | Cookie | Rename resume |
+| POST | `/api/resumes/:id/duplicate` | Cookie | Clone resume version |
+| POST | `/api/resumes/:id/analyze` | Cookie | Run AI analysis (saves result) |
+| GET | `/api/resumes/:id/analyses` | Cookie | Fetch analysis history |
+| GET | `/api/resumes/stats` | Cookie | Aggregate stats across all resumes |
+| GET | `/api/resumes/compare?id1=&id2=` | Cookie | Side-by-side comparison |
+| POST | `/api/resumes/analyze` | Cookie | One-off analysis (no persistence) |
 
 ### Notifications
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/api/notifications` | JWT | List notifications (auto-generates new ones) |
-| PUT | `/api/notifications/read-all` | JWT | Mark all as read |
-| PUT | `/api/notifications/:id/read` | JWT | Mark single notification as read |
+| GET | `/api/notifications` | Cookie | List notifications (auto-generates new ones) |
+| PUT | `/api/notifications/read-all` | Cookie | Mark all as read |
+| PUT | `/api/notifications/:id/read` | Cookie | Mark single notification as read |
 
 ### Analytics & Activity
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/api/analytics` | JWT | Full analytics payload |
-| GET | `/api/activity` | JWT | Activity timeline (last 50 events) |
+| GET | `/api/analytics` | Cookie | Full analytics payload |
+| GET | `/api/activity` | Cookie | Activity timeline (last 50 events) |
 
 ---
 
@@ -238,7 +240,7 @@ All routes under `/api` are rate-limited to 100 requests per 15 minutes per IP. 
 All AI features use the `callGeminiWithFallback` utility, which:
 
 1. Validates that `GEMINI_API_KEY` is present and non-placeholder.
-2. Calls `gemini-3.5-flash` with `responseMimeType: application/json` for structured output.
+2. Calls `gemini-1.5-flash` with `responseMimeType: application/json` for structured output.
 3. If the API call fails or the key is missing, falls back to a high-quality static response seeded from the application context (company name, role, industry, source data). This means every AI feature works end-to-end without a key configured — useful for demos and local development.
 
 Prompts are role-aware: frontend-focused roles get React/JS-specific DSA topics and technical questions; backend/general roles get system design, databases, and concurrency questions.
@@ -247,11 +249,13 @@ Prompts are role-aware: frontend-focused roles get React/JS-specific DSA topics 
 
 ## Security
 
-**Authentication** — Passwords are hashed with bcrypt (cost factor 10). JWTs are signed with `HS256`, expire after 7 days, and the secret is required in production (the server throws on startup if `JWT_SECRET` is missing).
+**Authentication** — Passwords are hashed with bcrypt (cost factor 10). JWTs are signed with `HS256` and expire after 7 days. On login/register the token is set as an **httpOnly, secure, SameSite cookie** rather than returned in the response body — this means client-side JavaScript never has access to the raw token, closing off the most common token-theft vector (XSS-based exfiltration from local storage). The server refuses to start in production if `JWT_SECRET` is missing.
 
 **Authorization** — Every data-access query includes `userId: req.userId` in the Prisma `where` clause, ensuring users can only read or modify their own data. There is no admin bypass.
 
-**Rate Limiting** — All API routes share a rate limiter: 100 requests per 15-minute window per IP, with `trust proxy` enabled for accurate IP detection behind reverse proxies (Vercel, Nginx, etc.).
+**Error Handling** — API error responses return generic, non-descriptive messages to the client (e.g. `"Server error"`). Full exception details (stack traces, DB errors) are captured only in the structured server-side logger and Sentry — never echoed back in the HTTP response, even in the auth flow.
+
+**Rate Limiting** — A global limiter (100 requests / 15-minute window / IP) applies across all API routes, with a stricter, dedicated limiter on `/auth/login` and `/auth/register` to slow down credential-stuffing and brute-force attempts. `trust proxy` is enabled for accurate IP detection behind reverse proxies (Vercel, Nginx, etc.).
 
 **Content Security Policy** — `helmet` is applied globally with a strict CSP. Allowed sources are scoped to:
 - Scripts/Styles: `'self'`, `'unsafe-inline'`, `https://unpkg.com` (Swagger UI)
@@ -264,6 +268,24 @@ Prompts are role-aware: frontend-focused roles get React/JS-specific DSA topics 
 **Request ID Correlation** — Every request receives a UUID (`X-Request-ID` response header). This ID is propagated to Sentry and the structured logger, enabling end-to-end tracing of any request across logs and error dashboards.
 
 **Error Monitoring** — Sentry captures unhandled exceptions on both the Node.js backend (via `@sentry/node`) and the React frontend (via `@sentry/react`), tagged with the request ID for correlation.
+
+---
+
+## Testing
+
+The integration test suite (Vitest + Supertest) covers:
+
+- **Health & infra** — `GET /api/health` returns 200 with the expected payload shape.
+- **Validation** — malformed registration/login payloads are rejected with 400 and structured Zod error details.
+- **Authorization guarantees** — every protected route returns 401 without a valid session, and returns 404 (not another user's data) when a resource ID belongs to a different user.
+- **Core CRUD flows** — create/read/update/delete coverage for companies, applications, and resumes, including ownership-boundary checks.
+- **Auth flows** — successful register/login issue a session cookie; invalid credentials are rejected without leaking whether the email or password was wrong.
+
+Run the suite locally:
+
+```bash
+npm run test
+```
 
 ---
 
@@ -320,20 +342,9 @@ InternTrack AI ships with interactive OpenAPI 3.0 documentation. All endpoint pa
 
 1. Start the dev server: `npm run dev`
 2. Navigate to: `http://localhost:3000/api/docs`
-3. Try requests live from the Swagger UI console — including authenticated endpoints by pasting a JWT into the **Authorize** button.
+3. Try requests live from the Swagger UI console.
 
 The raw OpenAPI specification is at [`openapi.json`](./openapi.json).
-
-### Running Tests
-
-```bash
-npm run test
-```
-
-The integration test suite (Vitest + Supertest) covers:
-- `GET /api/health` — confirms 200 + `{ status: "ok" }`
-- `POST /api/auth/register` — Zod schema rejects malformed payloads with 400
-- `GET /api/companies` without JWT — confirms 401 Unauthorized guard
 
 ### Production Build
 
@@ -389,9 +400,10 @@ Every push to `main` triggers the pipeline in [`.github/workflows/ci-cd.yml`](./
 2. `npm ci` — clean dependency install
 3. `npx prisma generate` — generate Prisma client
 4. `npm run lint` — TypeScript type-check (`tsc --noEmit`)
-5. `npm run build` — full production build validation
+5. `npm run test` — integration test suite
+6. `npm run build` — full production build validation, uploads build artifact
 
-The pipeline catches type errors and build failures before they reach Vercel.
+The pipeline catches type errors, failing tests, and build failures before they reach Vercel.
 
 ---
 
@@ -409,27 +421,30 @@ The pipeline catches type errors and build failures before they reach Vercel.
 │       └── ci-cd.yml             # GitHub Actions CI/CD pipeline
 ├── src/
 │   ├── backend/
-│   │   ├── api.ts                # Root API router — mounts all route modules
-│   │   ├── logger.ts             # Structured logger (INFO/WARN/ERROR + Request ID)
+│   │   ├── api.ts                # Root API router — mounts all route modules, /health, /docs
 │   │   ├── lib/
-│   │   │   └── gemini.ts         # callGeminiWithFallback AI utility
+│   │   │   ├── gemini.ts         # callGeminiWithFallback AI utility
+│   │   │   ├── logger.ts         # Structured logger (INFO/WARN/ERROR + Request ID)
+│   │   │   ├── prisma.ts         # Shared Prisma client instance
+│   │   │   └── activity.ts       # Activity log helper
+│   │   ├── middleware/
+│   │   │   └── auth.ts           # Session/JWT authentication middleware
 │   │   ├── routes/
 │   │   │   ├── auth.ts           # /auth/register, /auth/login, /auth/me
 │   │   │   ├── companies.ts      # /companies CRUD
 │   │   │   ├── applications.ts   # /applications CRUD + notes
 │   │   │   ├── resumes.ts        # /resumes + AI analysis
 │   │   │   ├── notifications.ts  # /notifications
-│   │   │   ├── analytics.ts      # /analytics/dashboard + AI insights
-│   │   │   ├── activity.ts       # /activity timeline
-│   │   │   └── health.ts         # /health status endpoint
+│   │   │   ├── analytics.ts      # /analytics, AI insights, interview prep, resume tailoring
+│   │   │   └── activity.ts       # /activity timeline
 │   │   └── __tests__/
 │   │       └── api.test.ts       # Vitest + Supertest integration tests
 │   ├── contexts/
-│   │   └── AuthContext.tsx       # JWT auth state, login/logout
+│   │   └── AuthContext.tsx       # Auth state, login/logout
 │   ├── layouts/
 │   │   └── MainLayout.tsx        # Sidebar navigation shell
 │   ├── lib/
-│   │   └── api.ts                # apiRequest() fetch wrapper with auth headers
+│   │   └── api.ts                # apiRequest() fetch wrapper (credentials: 'include')
 │   ├── pages/
 │   │   ├── Dashboard.tsx         # Analytics charts, AI insights, deadline tracker
 │   │   ├── Applications.tsx      # Full application CRUD with modal detail view
