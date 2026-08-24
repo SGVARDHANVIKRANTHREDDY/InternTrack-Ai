@@ -1,12 +1,11 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import { authenticate } from '../middleware/auth.js';
 import { logger } from '../lib/logger.js';
 import { logActivity } from '../lib/activity.js';
 import { callGeminiWithFallback } from '../lib/gemini.js';
 
-const prisma = new PrismaClient();
 const router = Router();
 
 const InterviewPrepUpdateSchema = z.object({
@@ -241,8 +240,9 @@ router.post('/applications/:appId/interview-prep', authenticate, async (req: any
     let resumeContext = '';
     if (application.resumeVersionId) {
       const resume = await prisma.resumeVersion.findUnique({ where: { id: application.resumeVersionId } });
-      if (resume && resume.notes) {
-        resumeContext = `Candidate Resume Content:\n${resume.notes}`;
+      if (resume) {
+        const content = resume.fileContent || resume.notes || '';
+        if (content) resumeContext = `Candidate Resume Content:\n${content}`;
       }
     }
 
@@ -310,8 +310,16 @@ router.get('/applications/:appId/interview-prep', authenticate, async (req: any,
 router.put('/interview-prep/:id', authenticate, validate(InterviewPrepUpdateSchema), async (req: any, res) => {
   try {
     const { dsaTopics, technicalQuestions, hrQuestions, resumeQuestions, companyResearch } = req.body;
+    const existing = await prisma.interviewPreparation.findFirst({
+      where: { id: req.params.id, application: { userId: req.userId } }
+    });
+    if (!existing) {
+      res.status(404).json({ error: 'Interview preparation not found' });
+      return;
+    }
+
     const prep = await prisma.interviewPreparation.update({
-      where: { id: req.params.id, application: { userId: req.userId } },
+      where: { id: req.params.id },
       data: {
         dsaTopics: typeof dsaTopics === 'string' ? dsaTopics : JSON.stringify(dsaTopics),
         technicalQuestions: typeof technicalQuestions === 'string' ? technicalQuestions : JSON.stringify(technicalQuestions),

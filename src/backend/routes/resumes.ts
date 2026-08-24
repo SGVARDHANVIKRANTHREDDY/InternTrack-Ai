@@ -1,11 +1,10 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import { authenticate } from '../middleware/auth.js';
 import { logger } from '../lib/logger.js';
 import { callGeminiWithFallback } from '../lib/gemini.js';
 
-const prisma = new PrismaClient();
 const router = Router();
 
 const ResumeUploadSchema = z.object({
@@ -341,8 +340,16 @@ router.patch('/:id/rename', authenticate, validate(ResumeRenameSchema), async (r
   try {
     const { id } = req.params;
     const { resumeName } = req.body;
+    const existing = await prisma.resumeVersion.findFirst({
+      where: { id, userId: req.userId }
+    });
+    if (!existing) {
+      res.status(404).json({ error: 'Resume not found' });
+      return;
+    }
+
     const resume = await prisma.resumeVersion.update({
-      where: { id, userId: req.userId },
+      where: { id },
       data: { resumeName }
     });
     res.json(resume);
@@ -355,8 +362,16 @@ router.patch('/:id/rename', authenticate, validate(ResumeRenameSchema), async (r
 router.delete('/:id', authenticate, async (req: any, res) => {
   try {
     const { id } = req.params;
-    await prisma.resumeVersion.delete({
+    const existing = await prisma.resumeVersion.findFirst({
       where: { id, userId: req.userId }
+    });
+    if (!existing) {
+      res.status(404).json({ error: 'Resume not found' });
+      return;
+    }
+
+    await prisma.resumeVersion.delete({
+      where: { id }
     });
     res.json({ success: true });
   } catch (err) {

@@ -90,6 +90,8 @@ export default function Resumes() {
   const [isPasteOpen, setIsPasteOpen] = useState(false);
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Rename State
   const [renameTargetId, setRenameTargetId] = useState('');
@@ -113,6 +115,7 @@ export default function Resumes() {
   const [customRole, setCustomRole] = useState('');
   const [uploadResumeName, setUploadResumeName] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -187,6 +190,12 @@ export default function Resumes() {
       setPastedName('');
       setPastedRole('');
       setUploadedFile(null);
+      setUploadTargetRole('');
+      setCustomRole('');
+      setUploadError(null);
+    },
+    onError: (err: any) => {
+      setUploadError(err?.message || 'Upload failed. Please try again.');
     }
   });
 
@@ -197,6 +206,11 @@ export default function Resumes() {
       queryClient.invalidateQueries({ queryKey: ['resume-stats'] });
       queryClient.invalidateQueries({ queryKey: ['activity'] });
       setSelectedResume(null);
+      setIsDeleteConfirmOpen(false);
+      setDeleteError(null);
+    },
+    onError: (err: any) => {
+      setDeleteError(err?.message || 'Failed to delete resume. Please try again.');
     }
   });
 
@@ -302,24 +316,101 @@ export default function Resumes() {
     if (!uploadedFile) return;
     const roleToUse = uploadTargetRole === 'Other' ? customRole : uploadTargetRole;
     if (!roleToUse) {
-      alert('Please specify a target role.');
+      setUploadError('Please select a target role before uploading.');
       return;
     }
+    setUploadError(null);
 
-    // Read file content
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const text = e.target?.result as string;
-      createResumeMutation.mutate({
-        resumeName: uploadResumeName || uploadedFile.name,
-        targetRole: roleToUse,
-        fileContent: text || 'Uploaded resume content',
-        mimeType: uploadedFile.type,
-        fileSize: uploadedFile.size,
-        notes: `Original uploaded file: ${uploadedFile.name}`
-      });
-    };
-    reader.readAsText(uploadedFile);
+    // Different file types need different extraction strategies — reading a
+    // PDF/DOCX with readAsText() produces garbage binary text, not the actual
+    // resume content, so each format gets parsed properly before upload.
+    const extension = uploadedFile.name.split('.').pop()?.toLowerCase();
+
+    if (extension === 'pdf') {
+      const reader = new FileReader();
+      reader.onerror = () => setUploadError('Failed to read the file. Please try again.');
+      reader.onload = async (e) => {
+        try {
+          const arrayBuffer = e.target?.result as ArrayBuffer;
+          const pdfjsLib = (window as any).pdfjsLib;
+          if (!pdfjsLib) {
+            setUploadError('PDF parsing library failed to load. Please refresh the page and try again.');
+            return;
+          }
+          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+          const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
+          const pdf = await loadingTask.promise;
+          let fullText = '';
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map((item: any) => item.str).join(' ');
+            fullText += pageText + '\n';
+          }
+
+          if (!fullText.trim()) {
+            fullText = 'Empty or scanned PDF file. No selectable text found.';
+          }
+
+          createResumeMutation.mutate({
+            resumeName: uploadResumeName || uploadedFile.name,
+            targetRole: roleToUse,
+            fileContent: fullText,
+            mimeType: uploadedFile.type,
+            fileSize: uploadedFile.size,
+            notes: `Original uploaded PDF file: ${uploadedFile.name}`
+          });
+        } catch (error: any) {
+          console.error('PDF parsing error:', error);
+          setUploadError(`Failed to parse PDF: ${error?.message || 'Unknown error'}`);
+        }
+      };
+      reader.readAsArrayBuffer(uploadedFile);
+    } else if (extension === 'docx') {
+      const reader = new FileReader();
+      reader.onerror = () => setUploadError('Failed to read the file. Please try again.');
+      reader.onload = async (e) => {
+        try {
+          const arrayBuffer = e.target?.result as ArrayBuffer;
+          const mammoth = (window as any).mammoth;
+          if (!mammoth) {
+            setUploadError('Word document parsing library failed to load. Please refresh the page and try again.');
+            return;
+          }
+          const result = await mammoth.extractRawText({ arrayBuffer });
+          const text = result.value || '';
+
+          createResumeMutation.mutate({
+            resumeName: uploadResumeName || uploadedFile.name,
+            targetRole: roleToUse,
+            fileContent: text || 'Empty Word document text.',
+            mimeType: uploadedFile.type,
+            fileSize: uploadedFile.size,
+            notes: `Original uploaded Word document: ${uploadedFile.name}`
+          });
+        } catch (error: any) {
+          console.error('Word document parsing error:', error);
+          setUploadError(`Failed to parse Word document: ${error?.message || 'Unknown error'}`);
+        }
+      };
+      reader.readAsArrayBuffer(uploadedFile);
+    } else {
+      const reader = new FileReader();
+      reader.onerror = () => setUploadError('Failed to read the file. Please try again.');
+      reader.onload = async (e) => {
+        const text = e.target?.result as string;
+        createResumeMutation.mutate({
+          resumeName: uploadResumeName || uploadedFile.name,
+          targetRole: roleToUse,
+          fileContent: text || 'Uploaded text resume content',
+          mimeType: uploadedFile.type,
+          fileSize: uploadedFile.size,
+          notes: `Original uploaded text file: ${uploadedFile.name}`
+        });
+      };
+      reader.readAsText(uploadedFile);
+    }
   };
 
   const handlePasteSubmit = () => {
@@ -588,11 +679,7 @@ export default function Resumes() {
                   </Button>
 
                   <Button 
-                    onClick={() => {
-                      if(confirm('Are you sure you want to delete this resume version?')) {
-                        deleteResumeMutation.mutate(selectedResume.id);
-                      }
-                    }}
+                    onClick={() => { setDeleteError(null); setIsDeleteConfirmOpen(true); }}
                     variant="outline" 
                     className="h-8 text-xs rounded-lg border-rose-200 text-rose-700 hover:bg-rose-50 font-bold"
                     disabled={deleteResumeMutation.isPending}
@@ -951,7 +1038,7 @@ export default function Resumes() {
       </div>
 
       {/* Drag & Drop Upload Dialog Modal */}
-      <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
+      <Dialog open={isUploadOpen} onOpenChange={(open) => { setIsUploadOpen(open); if (!open) { setUploadedFile(null); setUploadTargetRole(''); setCustomRole(''); setUploadError(null); } }}>
         <DialogContent className="bg-white border border-stone-200 rounded-2xl max-w-lg p-6">
           <DialogHeader>
             <DialogTitle className="text-lg font-black text-stone-900">Upload Resume File</DialogTitle>
@@ -1029,6 +1116,13 @@ export default function Resumes() {
                       onChange={e => setCustomRole(e.target.value)} 
                       className="h-10 rounded-lg border-stone-200"
                     />
+                  </div>
+                )}
+
+                {uploadError && (
+                  <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl p-3">
+                    <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <span>{uploadError}</span>
                   </div>
                 )}
 
@@ -1222,6 +1316,47 @@ export default function Resumes() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteConfirmOpen} onOpenChange={(open) => { setIsDeleteConfirmOpen(open); if (!open) setDeleteError(null); }}>
+        <DialogContent className="bg-white border border-stone-200 rounded-2xl max-w-sm p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-black text-stone-900 flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-rose-600" />
+              Delete Resume
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-stone-600">
+              Are you sure you want to delete <span className="font-bold text-stone-900">{selectedResume?.resumeName}</span>? This action cannot be undone.
+            </p>
+            {deleteError && (
+              <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl p-3">
+                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <span>{deleteError}</span>
+              </div>
+            )}
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => { setIsDeleteConfirmOpen(false); setDeleteError(null); }}
+                className="flex-1 h-10 rounded-xl border-stone-200 font-bold"
+                disabled={deleteResumeMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => selectedResume && deleteResumeMutation.mutate(selectedResume.id)}
+                className="flex-1 h-10 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold"
+                disabled={deleteResumeMutation.isPending}
+              >
+                {deleteResumeMutation.isPending ? 'Deleting...' : 'Yes, Delete'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
