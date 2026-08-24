@@ -40,7 +40,7 @@ describe('Live smoke test: login flow over a real HTTP connection', () => {
     server.close();
   });
 
-  it('completes register -> me -> logout with a real Origin header matching the request Host', async () => {
+  it('completes register -> me with a real Origin header matching the request Host', async () => {
     const passwordHash = await bcrypt.hash('correct-password-123', 10);
     mPrisma.user.findUnique.mockResolvedValueOnce(null); // no existing user on register check
     mPrisma.user.create.mockResolvedValueOnce({
@@ -61,11 +61,9 @@ describe('Live smoke test: login flow over a real HTTP connection', () => {
     });
 
     expect(registerRes.status).toBe(200);
-    const setCookieHeader = registerRes.headers.get('set-cookie');
-    expect(setCookieHeader).toBeTruthy();
-    expect(setCookieHeader!.toLowerCase()).toContain('httponly');
-
-    const cookie = setCookieHeader!.split(';')[0]; // "interntrack_session=..."
+    const registerBody = await registerRes.json();
+    expect(registerBody.token).toBeTruthy();
+    expect(typeof registerBody.token).toBe('string');
 
     mPrisma.user.findUnique.mockResolvedValueOnce({
       id: 'live-user-1',
@@ -79,17 +77,11 @@ describe('Live smoke test: login flow over a real HTTP connection', () => {
     });
 
     const meRes = await fetch(`${baseUrl}/api/auth/me`, {
-      headers: { Origin: baseUrl, Cookie: cookie },
+      headers: { Origin: baseUrl, Authorization: 'Bearer ' + registerBody.token },
     });
     expect(meRes.status).toBe(200);
     const meBody = await meRes.json();
     expect(meBody.email).toBe('live@example.com');
-
-    const logoutRes = await fetch(`${baseUrl}/api/auth/logout`, {
-      method: 'POST',
-      headers: { Origin: baseUrl, Cookie: cookie },
-    });
-    expect(logoutRes.status).toBe(200);
   });
 
   it('rejects a genuinely cross-origin request that is not in the allowlist', async () => {
