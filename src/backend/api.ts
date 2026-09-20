@@ -1,6 +1,5 @@
 import { Router } from 'express';
-import openApiSpec from '../../openapi.json';
-
+import openApiSpec from '../../openapi.json' with { type: 'json' };
 // Import sub-routers
 import authRouter from './routes/auth.js';
 import companiesRouter from './routes/companies.js';
