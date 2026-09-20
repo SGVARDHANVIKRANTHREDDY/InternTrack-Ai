@@ -4,7 +4,6 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import path from 'path';
 import cookieParser from 'cookie-parser';
-import { createServer as createViteServer } from 'vite';
 import { rateLimit } from 'express-rate-limit';
 import * as Sentry from '@sentry/node';
 import { v4 as uuidv4 } from 'uuid';
@@ -160,6 +159,7 @@ if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
   (async () => {
     const PORT = 3000;
     if (process.env.NODE_ENV !== 'production') {
+      const { createServer: createViteServer } = await import('vite');
       const vite = await createViteServer({
         server: { middlewareMode: true },
         appType: 'spa',
