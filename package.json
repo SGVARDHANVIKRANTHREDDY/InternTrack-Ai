@@ -82,6 +82,10 @@
     "vite": "^6.2.3",
     "vitest": "^4.1.9"
   },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.9.5"
+  },
+  "prisma": {
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   }
