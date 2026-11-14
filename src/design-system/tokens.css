@@ -1,0 +1,98 @@
+/**
+ * @file tokens.css
+ * InternTrack AI Design System Tokens
+ * Preserves warm stone & amber visual identity with Linear-grade structural discipline.
+ */
+
+:root {
+  /* Spacing Scale (4px-based) */
+  --space-0-5: 0.125rem; /* 2px */
+  --space-1: 0.25rem;    /* 4px */
+  --space-1-5: 0.375rem; /* 6px */
+  --space-2: 0.5rem;     /* 8px */
+  --space-2-5: 0.625rem; /* 10px */
+  --space-3: 0.75rem;    /* 12px */
+  --space-3-5: 0.875rem; /* 14px */
+  --space-4: 1rem;       /* 16px */
+  --space-5: 1.25rem;    /* 20px */
+  --space-6: 1.5rem;     /* 24px */
+  --space-7: 1.75rem;    /* 28px */
+  --space-8: 2rem;       /* 32px */
+  --space-10: 2.5rem;    /* 40px */
+  --space-12: 3rem;      /* 48px */
+  --space-16: 4rem;      /* 64px */
+
+  /* Border Radius */
+  --radius-xs: 0.25rem;  /* 4px */
+  --radius-sm: 0.375rem; /* 6px */
+  --radius-md: 0.5rem;   /* 8px */
+  --radius-lg: 0.75rem;  /* 12px */
+  --radius-xl: 1rem;     /* 16px */
+  --radius-2xl: 1.25rem; /* 20px */
+  --radius-3xl: 1.5rem;  /* 24px */
+  --radius-full: 9999px;
+
+  /* Typography Sizes */
+  --text-2xs: 0.6875rem; /* 11px */
+  --text-xs: 0.75rem;    /* 12px */
+  --text-sm: 0.875rem;   /* 14px */
+  --text-base: 1rem;     /* 16px */
+  --text-lg: 1.125rem;   /* 18px */
+  --text-xl: 1.25rem;    /* 20px */
+  --text-2xl: 1.5rem;    /* 24px */
+  --text-3xl: 1.875rem;  /* 30px */
+
+  /* Shadows - Light Theme */
+  --shadow-subtle: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-popover: 0 4px 16px -2px rgba(0, 0, 0, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.04);
+  --shadow-drawer: -4px 0 24px -2px rgba(0, 0, 0, 0.12), -2px 0 8px -1px rgba(0, 0, 0, 0.04);
+  --shadow-modal: 0 16px 40px -8px rgba(0, 0, 0, 0.16), 0 4px 12px -2px rgba(0, 0, 0, 0.08);
+
+  /* Warm Stone Palette - Light */
+  --it-bg-canvas: #fafaf9;        /* stone-50 */
+  --it-bg-subtle: #f5f5f4;        /* stone-100 */
+  --it-bg-surface: #ffffff;
+  --it-bg-surface-hover: #f5f5f4;
+  --it-border-subtle: #f0eeec;
+  --it-border-default: #e7e5e4;   /* stone-200 */
+  --it-border-strong: #d6d3d1;    /* stone-300 */
+  --it-text-primary: #1c1917;     /* stone-900 */
+  --it-text-secondary: #57534e;   /* stone-600 */
+  --it-text-tertiary: #a8a29e;    /* stone-400 */
+
+  /* Amber Accent */
+  --it-amber-primary: #d97706;    /* amber-600 */
+  --it-amber-hover: #b45309;      /* amber-700 */
+  --it-amber-light: #fef3c7;      /* amber-100 */
+  --it-amber-tint: rgba(217, 119, 6, 0.1);
+  --it-amber-glow: rgba(217, 119, 6, 0.2);
+}
+
+.dark {
+  /* Warm Stone Palette - Dark Obsidian Stone */
+  --it-bg-canvas: #0c0a09;        /* stone-950 base */
+  --it-bg-subtle: #171513;        /* elevated surface */
+  --it-bg-surface: #1c1917;       /* stone-900 card surface */
+  --it-bg-surface-hover: #24211e;
+  --it-border-subtle: rgba(255, 255, 255, 0.06);
+  --it-border-default: rgba(255, 255, 255, 0.1);
+  --it-border-strong: rgba(255, 255, 255, 0.16);
+  --it-text-primary: #f5f5f4;     /* stone-100 */
+  --it-text-secondary: #a8a29e;   /* stone-400 */
+  --it-text-tertiary: #78716c;    /* stone-500 */
+
+  /* Shadows - Dark Theme */
+  --shadow-subtle: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --shadow-popover: 0 4px 20px -2px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --shadow-drawer: -8px 0 32px 0 rgba(0, 0, 0, 0.7), -1px 0 0 0 rgba(255, 255, 255, 0.08);
+  --shadow-modal: 0 20px 48px -8px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.1);
+
+  /* Amber Accent in Dark Mode */
+  --it-amber-primary: #f59e0b;    /* amber-500 for high contrast */
+  --it-amber-hover: #fbbf24;      /* amber-400 */
+  --it-amber-light: rgba(245, 158, 11, 0.15);
+  --it-amber-tint: rgba(245, 158, 11, 0.12);
+  --it-amber-glow: rgba(245, 158, 11, 0.3);
+}

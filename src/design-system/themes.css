@@ -1,0 +1,64 @@
+/**
+ * @file themes.css
+ * InternTrack AI Theme Definitions
+ * Calibrates light and dark theme surfaces with warm stone and amber accents.
+ */
+
+:root {
+  color-scheme: light;
+  --bg-primary: #fafaf9;
+  --bg-surface: #ffffff;
+  --bg-card: #ffffff;
+  --border-app: #e7e5e4;
+  --border-muted: #f0eeec;
+  --text-main: #1c1917;
+  --text-muted: #78716c;
+}
+
+.dark {
+  color-scheme: dark;
+  --bg-primary: #0c0a09;
+  --bg-surface: #171513;
+  --bg-card: #1c1917;
+  --border-app: rgba(255, 255, 255, 0.1);
+  --border-muted: rgba(255, 255, 255, 0.06);
+  --text-main: #f5f5f4;
+  --text-muted: #a8a29e;
+}
+
+/* Scrollbar styling matching Linear */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(120, 113, 108, 0.25);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 113, 108, 0.45);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

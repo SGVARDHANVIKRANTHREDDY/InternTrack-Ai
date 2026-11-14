@@ -109,3 +109,11 @@ coverage/
 *.seed
 *.pid.lock
 .npm
+
+.vercel
+.env*
+
+
+# Benchmarks & Plans
+FRONTEND BENCHMARK.TXT
+FP.MD

@@ -17,6 +17,8 @@ interface AuthContextType {
   token: string | null;
   login: (token: string, user: User) => void;
   logout: () => void;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>;
+  refreshUser: () => Promise<User | null>;
   isLoading: boolean;
 }
 
@@ -55,8 +57,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   };
 
+  const refreshUser = async (): Promise<User | null> => {
+    if (token) {
+      try {
+        const userData = await apiRequest('/auth/me');
+        setUser(userData);
+        return userData;
+      } catch (error) {
+        // ignore
+      }
+    }
+    return null;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, setUser, refreshUser, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

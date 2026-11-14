@@ -6,6 +6,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 // Layout
 import MainLayout from './layouts/MainLayout';
@@ -18,6 +19,7 @@ import Companies from './pages/Companies';
 import Resumes from './pages/Resumes';
 import Timeline from './pages/Timeline';
 import Notifications from './pages/Notifications';
+import Settings from './pages/Settings';
 import Login from './pages/Login';
 import Register from './pages/Register';
 
@@ -42,26 +44,29 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            
-            <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-              <Route index element={<Dashboard />} />
-              <Route path="applications" element={<Applications />} />
-              <Route path="kanban" element={<Kanban />} />
-              <Route path="companies" element={<Companies />} />
-              <Route path="resumes" element={<Resumes />} />
-              <Route path="timeline" element={<Timeline />} />
-              <Route path="notifications" element={<Notifications />} />
-            </Route>
-            
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              
+              <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+                <Route index element={<Dashboard />} />
+                <Route path="applications" element={<Applications />} />
+                <Route path="kanban" element={<Kanban />} />
+                <Route path="companies" element={<Companies />} />
+                <Route path="resumes" element={<Resumes />} />
+                <Route path="timeline" element={<Timeline />} />
+                <Route path="notifications" element={<Notifications />} />
+                <Route path="settings" element={<Settings />} />
+              </Route>
+              
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </BrowserRouter>
+        </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
