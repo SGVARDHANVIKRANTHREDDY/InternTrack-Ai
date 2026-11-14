@@ -100,19 +100,95 @@ export const ResumeUploadModal: React.FC<ResumeUploadModalProps> = ({
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        const content = (evt.target?.result as string) || 'Uploaded resume content';
-        onSubmit({
-          resumeName: resumeName.trim() || file.name,
-          targetRole: finalRole,
-          fileContent: content,
-          mimeType: file.type || 'application/pdf',
-          fileSize: file.size,
-          notes: `Original uploaded file: ${file.name}`
-        });
-      };
-      reader.readAsText(file);
+      const extension = file.name.split('.').pop()?.toLowerCase();
+
+      if (extension === 'pdf') {
+        const reader = new FileReader();
+        reader.onerror = () => setFileError('Failed to read the PDF file. Please try again.');
+        reader.onload = async (evt) => {
+          try {
+            const arrayBuffer = evt.target?.result as ArrayBuffer;
+            const pdfjsLib = (window as any).pdfjsLib;
+
+            let extractedText = '';
+            if (pdfjsLib) {
+              pdfjsLib.GlobalWorkerOptions.workerSrc =
+                'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+              const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
+              const pdf = await loadingTask.promise;
+              for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map((item: any) => item.str).join(' ');
+                extractedText += pageText + '\n';
+              }
+            }
+
+            if (!extractedText.trim()) {
+              extractedText = `PDF Document: ${file.name}\n(Binary PDF uploaded with size ${(file.size / 1024).toFixed(1)} KB)`;
+            }
+
+            onSubmit({
+              resumeName: resumeName.trim() || file.name,
+              targetRole: finalRole,
+              fileContent: extractedText,
+              mimeType: file.type || 'application/pdf',
+              fileSize: file.size,
+              notes: `Original uploaded file: ${file.name}`,
+            });
+          } catch (err: any) {
+            setFileError(`Failed to parse PDF: ${err.message || 'Unknown error'}`);
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      } else if (extension === 'docx') {
+        const reader = new FileReader();
+        reader.onerror = () => setFileError('Failed to read the Word document. Please try again.');
+        reader.onload = async (evt) => {
+          try {
+            const arrayBuffer = evt.target?.result as ArrayBuffer;
+            const mammoth = (window as any).mammoth;
+
+            let extractedText = '';
+            if (mammoth) {
+              const result = await mammoth.extractRawText({ arrayBuffer });
+              extractedText = result.value || '';
+            }
+
+            if (!extractedText.trim()) {
+              extractedText = `Word Document: ${file.name}\n(Uploaded with size ${(file.size / 1024).toFixed(1)} KB)`;
+            }
+
+            onSubmit({
+              resumeName: resumeName.trim() || file.name,
+              targetRole: finalRole,
+              fileContent: extractedText,
+              mimeType: file.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              fileSize: file.size,
+              notes: `Original uploaded Word document: ${file.name}`,
+            });
+          } catch (err: any) {
+            setFileError(`Failed to parse Word document: ${err.message || 'Unknown error'}`);
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      } else {
+        const reader = new FileReader();
+        reader.onerror = () => setFileError('Failed to read text file.');
+        reader.onload = (evt) => {
+          const content = (evt.target?.result as string) || '';
+          onSubmit({
+            resumeName: resumeName.trim() || file.name,
+            targetRole: finalRole,
+            fileContent: content || 'Empty text resume content',
+            mimeType: file.type || 'text/plain',
+            fileSize: file.size,
+            notes: `Original uploaded file: ${file.name}`,
+          });
+        };
+        reader.readAsText(file);
+      }
     } else {
       if (!pastedText.trim()) {
         setFileError('Please paste resume text.');
