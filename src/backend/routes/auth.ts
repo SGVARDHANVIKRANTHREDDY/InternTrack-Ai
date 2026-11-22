@@ -9,7 +9,7 @@ import { authenticate } from '../middleware/auth.js';
 const prisma = new PrismaClient();
 const router = Router();
 
-const JWT_SECRET = (() => {
+const getJwtSecret = () => {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
     if (process.env.NODE_ENV === 'production') {
@@ -18,7 +18,7 @@ const JWT_SECRET = (() => {
     return 'fallback_secret_key_for_dev_only';
   }
   return secret;
-})();
+};
 
 // ==========================================
 // ZOD SCHEMAS & MIDDLEWARE
@@ -79,12 +79,12 @@ router.post('/register', validate(RegisterSchema), async (req: any, res) => {
       data: { email, passwordHash, name }
     });
 
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ userId: user.id }, getJwtSecret(), { expiresIn: '7d' });
     logger.info(`User registered successfully: ${user.email}`, { requestId: req.id, userId: user.id });
     res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
   } catch (err: any) {
     logger.error('Registration error', { requestId: req.id, error: err });
-    res.status(500).json({ error: `Server error: ${err.message || err}` });
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
@@ -103,12 +103,12 @@ router.post('/login', validate(LoginSchema), async (req: any, res) => {
       return;
     }
 
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ userId: user.id }, getJwtSecret(), { expiresIn: '7d' });
     logger.info(`User logged in: ${user.email}`, { requestId: req.id, userId: user.id });
     res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
   } catch (err: any) {
     logger.error('Login error', { requestId: req.id, error: err });
-    res.status(500).json({ error: `Server error: ${err.message || err}` });
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
@@ -121,7 +121,7 @@ router.get('/me', authenticate, async (req: any, res) => {
     res.json(user);
   } catch (err: any) {
     logger.error('Error fetching user profile', { requestId: req.id, userId: req.userId, error: err });
-    res.status(500).json({ error: `Server error: ${err.message || err}` });
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
@@ -137,7 +137,7 @@ router.put('/me', authenticate, validate(UpdateProfileSchema), async (req: any, 
     res.json(updated);
   } catch (err: any) {
     logger.error('Error updating user profile', { requestId: req.id, userId: req.userId, error: err });
-    res.status(500).json({ error: `Server error: ${err.message || err}` });
+    res.status(500).json({ error: 'Server error' });
   }
 });
 

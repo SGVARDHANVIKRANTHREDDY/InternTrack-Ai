@@ -87,6 +87,26 @@ router.post('/applications', authenticate, validate(ApplicationSchema), async (r
     if (data.followUpDate) data.followUpDate = new Date(data.followUpDate);
     if (data.nextFollowUpDate) data.nextFollowUpDate = new Date(data.nextFollowUpDate);
 
+    // Verify company belongs to current user (prevent IDOR)
+    const company = await prisma.company.findFirst({
+      where: { id: data.companyId, userId: req.userId }
+    });
+    if (!company) {
+      res.status(404).json({ error: 'Company not found' });
+      return;
+    }
+
+    // Verify resume version belongs to current user if specified (prevent IDOR)
+    if (data.resumeVersionId) {
+      const resume = await prisma.resumeVersion.findFirst({
+        where: { id: data.resumeVersionId, userId: req.userId }
+      });
+      if (!resume) {
+        res.status(404).json({ error: 'Resume version not found' });
+        return;
+      }
+    }
+
     const application = await prisma.application.create({
       data: { ...data, userId: req.userId },
       include: { company: true }
@@ -115,6 +135,28 @@ router.put('/applications/:id', authenticate, validate(ApplicationUpdateSchema),
     if (data.deadlineDate) data.deadlineDate = new Date(data.deadlineDate);
     if (data.followUpDate) data.followUpDate = new Date(data.followUpDate);
     if (data.nextFollowUpDate) data.nextFollowUpDate = new Date(data.nextFollowUpDate);
+
+    // Verify company belongs to current user if updating companyId (prevent IDOR)
+    if (data.companyId) {
+      const company = await prisma.company.findFirst({
+        where: { id: data.companyId, userId: req.userId }
+      });
+      if (!company) {
+        res.status(404).json({ error: 'Company not found' });
+        return;
+      }
+    }
+
+    // Verify resume version belongs to current user if updating resumeVersionId (prevent IDOR)
+    if (data.resumeVersionId) {
+      const resume = await prisma.resumeVersion.findFirst({
+        where: { id: data.resumeVersionId, userId: req.userId }
+      });
+      if (!resume) {
+        res.status(404).json({ error: 'Resume version not found' });
+        return;
+      }
+    }
     
     const application = await prisma.application.update({
       where: { id: req.params.id },

@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { logger } from '../lib/logger.js';
 
-const JWT_SECRET = (() => {
+const getJwtSecret = () => {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
     if (process.env.NODE_ENV === 'production') {
@@ -10,7 +10,7 @@ const JWT_SECRET = (() => {
     return 'fallback_secret_key_for_dev_only';
   }
   return secret;
-})();
+};
 
 export const authenticate = (req: any, res: any, next: any) => {
   const token = req.headers.authorization?.split(' ')[1];
@@ -20,7 +20,7 @@ export const authenticate = (req: any, res: any, next: any) => {
   }
 
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as any;
+    const payload = jwt.verify(token, getJwtSecret()) as any;
     req.userId = payload.userId;
     next();
   } catch (err) {

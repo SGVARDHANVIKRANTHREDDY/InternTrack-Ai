@@ -72,7 +72,7 @@ app.use((req, res, next) => {
         callback(new Error('Not allowed by CORS'));
       }
     },
-    credentials: true, // required so the browser sends/receives the httpOnly auth cookie
+    credentials: true, // allowed for cross-origin requests requiring credentials (tokens stored in localStorage, passed in Authorization header)
   })(req, res, next);
 });
 app.use(cookieParser());
